@@ -19,7 +19,7 @@ class ProjectileUI(QMainWindow):
         self._placeWindowInTheMiddle()
         self.g = 10
         self.v0 = 5
-        self.alfa = 45
+        self.alfa = 35
         self.alfa_in_radians = math.radians(self.alfa)
         self.DotSize = 10
 
@@ -33,6 +33,7 @@ class ProjectileUI(QMainWindow):
 
     def draw_X_axis(self, q_painter, axis_distance, x_start_point, y_start_point, scale):
         q_painter.drawLine(x_start_point, y_start_point + 5, x_start_point + axis_distance * scale, y_start_point + 5)
+        # Loop needs integer values, in case the distance is small it is multiplied by 1000 and divided inside the loop
         fake_axis_distance_used_in_a_loop = int(axis_distance * 1000)
         one_part_of_fake_distance = int(fake_axis_distance_used_in_a_loop/25)
         for x in range(0, fake_axis_distance_used_in_a_loop + 1, one_part_of_fake_distance):
@@ -41,32 +42,31 @@ class ProjectileUI(QMainWindow):
             pixels_below_the_axis = 25
             q_painter.drawLine(x_start_point + x_pixels, y_start_point, x_start_point + x_pixels, y_start_point + 10)
 
-            # TO DO is it working ok now?
-            # TO DO if scale has 3 digit numbers, they seem to close to each other
-            # two and three digit numbers should be moved few pixels more to the left, so they are directly under the ticks
-            if x < 10:
-                q_painter.drawText(x_start_point + x_pixels - 3, y_start_point + pixels_below_the_axis, str(x_real_value))
-            elif x < 100:
+            # When distance is very small the scale is only up to distance of 10, in that case floating point is apreciated
+            # Two and three digit numbers should be moved few pixels more to the left, so they are directly under the ticks
+            if x_real_value < 10 and axis_distance <= 10:
                 q_painter.drawText(x_start_point + x_pixels - 9, y_start_point + pixels_below_the_axis, str(x_real_value))
+            elif x_real_value < 100:
+                q_painter.drawText(x_start_point + x_pixels - 9, y_start_point + pixels_below_the_axis, '%.0f' % (x_real_value))
             else:
-                q_painter.drawText(x_start_point + x_pixels - 13, y_start_point + pixels_below_the_axis, str(x_real_value))
+                q_painter.drawText(x_start_point + x_pixels - 13, y_start_point + pixels_below_the_axis, '%.0f' % (x_real_value))
 
 
     def draw_balls(self, q_painter, ball_distance, x_start_point, y_start_point, scale):
-        # TO DO NEEDS EXPLANATION WHY * 1000
+        # Loop needs integer values, in case the distance is small it is multiplied by 1000 and divided inside the loop
         fake_ball_distance_used_in_a_loop = int(ball_distance * 1000)
         one_part_of_fake_distance = int(fake_ball_distance_used_in_a_loop/25)
         for x in range(0, fake_ball_distance_used_in_a_loop + 1, one_part_of_fake_distance):
             x_real_value = x / 1000
             x_pixels = x_real_value * scale
-            # TO DO formula needs explanation
+            # TO DO: Formula explanation
             y_value = x_real_value * math.tan(self.alfa_in_radians) - (self.g / (2 * (self.v0**2) * math.cos(self.alfa_in_radians)**2) * x_real_value**2)
             y_pixels = y_value * scale
             q_painter.drawEllipse(x_start_point + x_pixels - self.DotSize/2, y_start_point - y_pixels, self.DotSize, self.DotSize)
 
 
-    # TO DO explanation
     def get_scale(self, distance):
+        """ Returns scale based on a distance argument"""
         if distance <= 10:
             scale = 100
         elif distance <= 100:
@@ -75,14 +75,15 @@ class ProjectileUI(QMainWindow):
             scale = 4
         return scale
 
+
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
         qp.setBrush(QBrush(Qt.red, Qt.SolidPattern))
         qp.setPen(QPen(Qt.black))
 
-        self.v0 = 45
-        # TO DO formula eplanation
+        self.v0 = 5
+        # TO DO: Formula explanation
         Z = self.v0**2 / self.g * math.sin(2 * self.alfa_in_radians)
         pixel_scale = self.get_scale(Z)
         axis_distance = 4 * 250 / pixel_scale
