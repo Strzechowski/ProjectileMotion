@@ -2,8 +2,8 @@
 import sys
 
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtWidgets import QMainWindow
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QLineEdit, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider
+from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtGui import QBrush, QPainter, QPen
 import math
 
@@ -19,9 +19,74 @@ class ProjectileUI(QMainWindow):
         self._placeWindowInTheMiddle()
         self.g = 10
         self.v0 = 5
-        self.alfa = 35
-        self.alfa_in_radians = math.radians(self.alfa)
+        self.alfa = 5
         self.DotSize = 10
+        self.create_controls_for_motion_parameters()
+
+
+    def create_controls_for_motion_parameters(self):
+        controls = QWidget(self)
+        controls.setMaximumSize(self.sizeX/4, self.sizeY/4)
+        self.setCentralWidget(controls)
+
+        start_button = QPushButton('Start!', self)
+        start_button.clicked.connect(self.on_click)
+
+        self.angle_label = QLabel(self)
+        self.angle_label.setText('Angle: %s' % self.alfa)
+
+        self.initial_speed_label = QLabel(self)
+        self.initial_speed_label.setText('Initial speed: %s' % self.v0)
+
+
+        self.initial_speed_slider = QSlider(Qt.Horizontal)
+        self.initial_speed_slider.setTickInterval(5)
+        self.initial_speed_slider.setMaximum(50)
+        self.initial_speed_slider.setMinimum(5)
+        self.initial_speed_slider.setSingleStep(5)
+        self.initial_speed_slider.setTickPosition(QSlider.TicksBothSides)
+        self.initial_speed_slider.valueChanged.connect(self.slider_value_update)
+
+
+        self.angle_slider = QSlider(Qt.Horizontal)
+        self.angle_slider.setTickInterval(5)
+        self.angle_slider.setMaximum(80)
+        self.angle_slider.setMinimum(5)
+        self.angle_slider.setSingleStep(5)
+        self.angle_slider.setTickPosition(QSlider.TicksBothSides)
+        self.angle_slider.valueChanged.connect(self.angle_slider_value_update)
+
+
+        main_vertical_layout = QVBoxLayout()
+        horizontal_layout_1 = QHBoxLayout()
+        horizontal_layout_1.addWidget(self.angle_label)
+        horizontal_layout_1.addWidget(self.angle_slider)
+
+        horizontal_layout_2 = QHBoxLayout()
+        horizontal_layout_2.addWidget(self.initial_speed_label)
+        horizontal_layout_2.addWidget(self.initial_speed_slider)
+
+        horizontal_layout_3 = QHBoxLayout()
+        horizontal_layout_3.addWidget(start_button)
+
+
+        main_vertical_layout.addLayout(horizontal_layout_1)
+        main_vertical_layout.addLayout(horizontal_layout_2)
+        main_vertical_layout.addLayout(horizontal_layout_3)
+        controls.setLayout(main_vertical_layout)
+
+
+    def slider_value_update(self):
+        self.v0 = self.initial_speed_slider.value()
+        self.initial_speed_label.setText('Initial speed: %s' % self.v0)
+
+    def angle_slider_value_update(self):
+        self.alfa = self.angle_slider.value()
+        self.angle_label.setText('Angle: %s' % self.alfa)
+
+    @pyqtSlot()
+    def on_click(self):
+        self.update()
 
 
     def _placeWindowInTheMiddle(self):
@@ -29,6 +94,25 @@ class ProjectileUI(QMainWindow):
         Y = (self.resolution.height() - self.sizeY) / 2
         self.setGeometry(X, Y, self.sizeX, self.sizeY)
         self.setMaximumSize(2*self.sizeX, self.sizeY)
+
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+        qp.setBrush(QBrush(Qt.red, Qt.SolidPattern))
+        qp.setPen(QPen(Qt.black))
+
+        # TO DO: Formula explanation
+        self.alfa_in_radians = math.radians(self.alfa)
+        Z = self.v0**2 / self.g * math.sin(2 * self.alfa_in_radians)
+        pixel_scale = self.get_scale(Z)
+        axis_distance = 4 * 250 / pixel_scale
+
+        PositionY = self.sizeY - (4*self.DotSize)
+        PositionX = 2*self.DotSize
+
+        self.draw_X_axis(qp, axis_distance, PositionX, PositionY, pixel_scale)
+        self.draw_balls(qp, Z , PositionX, PositionY, pixel_scale)
 
 
     def draw_X_axis(self, q_painter, axis_distance, x_start_point, y_start_point, scale):
@@ -74,25 +158,6 @@ class ProjectileUI(QMainWindow):
         else:
             scale = 4
         return scale
-
-
-    def paintEvent(self, event):
-        qp = QPainter()
-        qp.begin(self)
-        qp.setBrush(QBrush(Qt.red, Qt.SolidPattern))
-        qp.setPen(QPen(Qt.black))
-
-        self.v0 = 5
-        # TO DO: Formula explanation
-        Z = self.v0**2 / self.g * math.sin(2 * self.alfa_in_radians)
-        pixel_scale = self.get_scale(Z)
-        axis_distance = 4 * 250 / pixel_scale
-
-        PositionY = self.sizeY - (4*self.DotSize)
-        PositionX = 2*self.DotSize
-
-        self.draw_X_axis(qp, axis_distance, PositionX, PositionY, pixel_scale)
-        self.draw_balls(qp, Z , PositionX, PositionY, pixel_scale)
 
 
 class ProjectileCtrl:
