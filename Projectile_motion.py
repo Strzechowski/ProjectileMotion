@@ -3,7 +3,7 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QMainWindow, QPushButton, QLineEdit, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider
-from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSlot, QTimer
 from PyQt5.QtGui import QBrush, QPainter, QPen
 import math
 
@@ -16,12 +16,28 @@ class ProjectileUI(QMainWindow):
         self.resolution = resolution
         self.sizeX = 1100
         self.sizeY = 600
-        self._placeWindowInTheMiddle()
+        self.placeWindowInTheMiddle()
         self.g = 10
         self.v0 = 5
         self.alfa = 5
         self.DotSize = 10
+        self.count = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.showTime)
+
+        # List of tuples with X and Y coordinates eg. [(x1, y1), (x2, y2), ...]
+        self.coordinates_of_balls = []
+        self.amount_of_visible_balls = 0
+
         self.create_controls_for_motion_parameters()
+
+
+    def showTime(self):
+        self.amount_of_visible_balls += 1
+        if self.amount_of_visible_balls == 27:
+            self.amount_of_visible_balls = 0
+        # Updates the drawing
+        self.update()
 
 
     def create_controls_for_motion_parameters(self):
@@ -77,19 +93,24 @@ class ProjectileUI(QMainWindow):
 
 
     def slider_value_update(self):
+        self.timer.stop()
         self.v0 = self.initial_speed_slider.value()
         self.initial_speed_label.setText('Initial speed: %s' % self.v0)
 
+
     def angle_slider_value_update(self):
+        self.timer.stop()
         self.alfa = self.angle_slider.value()
         self.angle_label.setText('Angle: %s' % self.alfa)
 
+
     @pyqtSlot()
     def on_click(self):
-        self.update()
+        self.timer.start(200)
+        self.amount_of_visible_balls = 0
 
 
-    def _placeWindowInTheMiddle(self):
+    def placeWindowInTheMiddle(self):
         X = (self.resolution.width() - self.sizeX) / 2
         Y = (self.resolution.height() - self.sizeY) / 2
         self.setGeometry(X, Y, self.sizeX, self.sizeY)
@@ -100,10 +121,9 @@ class ProjectileUI(QMainWindow):
         qp = QPainter()
         qp.begin(self)
         qp.setBrush(QBrush(Qt.red, Qt.SolidPattern))
-        qp.setPen(QPen(Qt.black))
 
-        # TO DO: Formula explanation
         self.alfa_in_radians = math.radians(self.alfa)
+        # TO DO: Formula explanation
         Z = self.v0**2 / self.g * math.sin(2 * self.alfa_in_radians)
         pixel_scale = self.get_scale(Z)
         axis_distance = 4 * 250 / pixel_scale
@@ -112,7 +132,19 @@ class ProjectileUI(QMainWindow):
         PositionX = 2*self.DotSize
 
         self.draw_X_axis(qp, axis_distance, PositionX, PositionY, pixel_scale)
-        self.draw_balls(qp, Z , PositionX, PositionY, pixel_scale)
+        self.count_balls(qp, Z , PositionX, PositionY, pixel_scale)
+        self.draw_balls(qp, Z , PositionX, PositionY)
+
+
+    def get_scale(self, distance):
+            """ Returns scale based on a distance argument"""
+            if distance <= 10:
+                scale = 100
+            elif distance <= 100:
+                scale = 10
+            else:
+                scale = 4
+            return scale
 
 
     def draw_X_axis(self, q_painter, axis_distance, x_start_point, y_start_point, scale):
@@ -136,28 +168,27 @@ class ProjectileUI(QMainWindow):
                 q_painter.drawText(x_start_point + x_pixels - 13, y_start_point + pixels_below_the_axis, '%.0f' % (x_real_value))
 
 
-    def draw_balls(self, q_painter, ball_distance, x_start_point, y_start_point, scale):
+    def count_balls(self, q_painter, ball_distance, x_start_point, y_start_point, scale):
         # Loop needs integer values, in case the distance is small it is multiplied by 1000 and divided inside the loop
         fake_ball_distance_used_in_a_loop = int(ball_distance * 1000)
         one_part_of_fake_distance = int(fake_ball_distance_used_in_a_loop/25)
+        temporary_balls = []
         for x in range(0, fake_ball_distance_used_in_a_loop + 1, one_part_of_fake_distance):
+            self.count += 1
             x_real_value = x / 1000
             x_pixels = x_real_value * scale
             # TO DO: Formula explanation
             y_value = x_real_value * math.tan(self.alfa_in_radians) - (self.g / (2 * (self.v0**2) * math.cos(self.alfa_in_radians)**2) * x_real_value**2)
             y_pixels = y_value * scale
-            q_painter.drawEllipse(x_start_point + x_pixels - self.DotSize/2, y_start_point - y_pixels, self.DotSize, self.DotSize)
+            temporary_balls.append((x_pixels, y_pixels))
+
+        self.coordinates_of_balls = temporary_balls
+        print(self.count)
 
 
-    def get_scale(self, distance):
-        """ Returns scale based on a distance argument"""
-        if distance <= 10:
-            scale = 100
-        elif distance <= 100:
-            scale = 10
-        else:
-            scale = 4
-        return scale
+    def draw_balls(self, q_painter, ball_distance, x_start_point, y_start_point):
+        for i in range(self.amount_of_visible_balls):
+            q_painter.drawEllipse(x_start_point + self.coordinates_of_balls[i][0] - self.DotSize/2, y_start_point - self.coordinates_of_balls[i][1], self.DotSize, self.DotSize)
 
 
 class ProjectileCtrl:
