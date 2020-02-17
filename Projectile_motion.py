@@ -21,15 +21,19 @@ class ProjectileUI(QMainWindow):
         self.v0 = 5
         self.alfa = 5
         self.DotSize = 10
-        self.count = 0
+
+        # Timer setup
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.showTime)
 
         # List of tuples with X and Y coordinates eg. [(x1, y1), (x2, y2), ...]
         self.coordinates_of_balls = []
         self.amount_of_visible_balls = 0
+        # List of tuples with X pixels and X distance values eg. [(x1_pixels, x1_real_value), ...]
+        self.axis_coordinates_and_values = []
 
         self.create_controls_for_motion_parameters()
+        self.basic_motion_calculations()
 
 
     def showTime(self):
@@ -104,8 +108,59 @@ class ProjectileUI(QMainWindow):
         self.angle_label.setText('Angle: %s' % self.alfa)
 
 
+    def basic_motion_calculations(self):
+        self.alfa_in_radians = math.radians(self.alfa)
+        # TO DO: Formula explanation
+        Z = self.v0**2 / self.g * math.sin(2 * self.alfa_in_radians)
+        self.pixel_scale = self.get_scale(Z)
+
+        self.y_start_point = self.sizeY - (4*self.DotSize)
+        self.x_start_point = 2*self.DotSize
+
+        self.count_balls(Z)
+        self.count_axis()
+
+
+    def get_scale(self, distance):
+            """ Returns scale based on a distance argument"""
+            if distance <= 10:
+                scale = 100
+            elif distance <= 100:
+                scale = 10
+            else:
+                scale = 4
+            return scale
+
+
+    def count_axis(self):
+        temporary_axis_data = []
+        for x in range(0, 1001, 40):
+            temporary_axis_data.append((x, x / self.pixel_scale))
+
+        self.axis_coordinates_and_values = temporary_axis_data
+
+
+    def count_balls(self, distance):
+        # Loop needs integer values, in case the distance is small it is multiplied by 1000 and divided inside the loop
+        fake_ball_distance_used_in_a_loop = int(distance * 1000)
+        one_part_of_fake_distance = int(fake_ball_distance_used_in_a_loop/25)
+        temporary_balls = []
+        temporary_real_values = []
+        for x in range(0, fake_ball_distance_used_in_a_loop + 1, one_part_of_fake_distance):
+            x_real_value = x / 1000
+            x_pixels = x_real_value * self.pixel_scale
+            # TO DO: Formula explanation
+            y_value = x_real_value * math.tan(self.alfa_in_radians) - (self.g / (2 * (self.v0**2) * math.cos(self.alfa_in_radians)**2) * x_real_value**2)
+            y_pixels = y_value * self.pixel_scale
+            temporary_balls.append((x_pixels, y_pixels))
+            temporary_real_values.append(x_real_value)
+
+        self.coordinates_of_balls = temporary_balls
+
+
     @pyqtSlot()
     def on_click(self):
+        self.basic_motion_calculations()
         self.timer.start(200)
         self.amount_of_visible_balls = 0
 
@@ -122,73 +177,34 @@ class ProjectileUI(QMainWindow):
         qp.begin(self)
         qp.setBrush(QBrush(Qt.red, Qt.SolidPattern))
 
-        self.alfa_in_radians = math.radians(self.alfa)
-        # TO DO: Formula explanation
-        Z = self.v0**2 / self.g * math.sin(2 * self.alfa_in_radians)
-        pixel_scale = self.get_scale(Z)
-        axis_distance = 4 * 250 / pixel_scale
-
-        PositionY = self.sizeY - (4*self.DotSize)
-        PositionX = 2*self.DotSize
-
-        self.draw_X_axis(qp, axis_distance, PositionX, PositionY, pixel_scale)
-        self.count_balls(qp, Z , PositionX, PositionY, pixel_scale)
-        self.draw_balls(qp, Z , PositionX, PositionY)
+        #self.basic_motion_calculations()
+        self.draw_X_axis(qp)
+        self.draw_balls(qp)
 
 
-    def get_scale(self, distance):
-            """ Returns scale based on a distance argument"""
-            if distance <= 10:
-                scale = 100
-            elif distance <= 100:
-                scale = 10
-            else:
-                scale = 4
-            return scale
+    def draw_X_axis(self, q_painter):
+        q_painter.drawLine(self.x_start_point, self.y_start_point + 5, self.x_start_point + 1000, self.y_start_point + 5)
+        pixels_below_the_axis = 25
 
+        for i in range(len(self.axis_coordinates_and_values)):
+            x_pixels = self.axis_coordinates_and_values[i][0]
+            x_real_value = self.axis_coordinates_and_values[i][1]
+            q_painter.drawLine(self.x_start_point + x_pixels, self.y_start_point, self.x_start_point + x_pixels, self.y_start_point + 10)
 
-    def draw_X_axis(self, q_painter, axis_distance, x_start_point, y_start_point, scale):
-        q_painter.drawLine(x_start_point, y_start_point + 5, x_start_point + axis_distance * scale, y_start_point + 5)
-        # Loop needs integer values, in case the distance is small it is multiplied by 1000 and divided inside the loop
-        fake_axis_distance_used_in_a_loop = int(axis_distance * 1000)
-        one_part_of_fake_distance = int(fake_axis_distance_used_in_a_loop/25)
-        for x in range(0, fake_axis_distance_used_in_a_loop + 1, one_part_of_fake_distance):
-            x_real_value = x / 1000
-            x_pixels = x_real_value * scale
-            pixels_below_the_axis = 25
-            q_painter.drawLine(x_start_point + x_pixels, y_start_point, x_start_point + x_pixels, y_start_point + 10)
-
-            # When distance is very small the scale is only up to distance of 10, in that case floating point is apreciated
+            # When distance is very small the X axis is only up to distance of 10, in that case floating point is apreciated
             # Two and three digit numbers should be moved few pixels more to the left, so they are directly under the ticks
-            if x_real_value < 10 and axis_distance <= 10:
-                q_painter.drawText(x_start_point + x_pixels - 9, y_start_point + pixels_below_the_axis, str(x_real_value))
+            if x_real_value < 10 and self.pixel_scale == 100:
+                q_painter.drawText(self.x_start_point + x_pixels - 9, self.y_start_point + pixels_below_the_axis, str(x_real_value))
             elif x_real_value < 100:
-                q_painter.drawText(x_start_point + x_pixels - 9, y_start_point + pixels_below_the_axis, '%.0f' % (x_real_value))
+                q_painter.drawText(self.x_start_point + x_pixels - 9, self.y_start_point + pixels_below_the_axis, '%.0f' % (x_real_value))
             else:
-                q_painter.drawText(x_start_point + x_pixels - 13, y_start_point + pixels_below_the_axis, '%.0f' % (x_real_value))
+                q_painter.drawText(self.x_start_point + x_pixels - 13, self.y_start_point + pixels_below_the_axis, '%.0f' % (x_real_value))
 
 
-    def count_balls(self, q_painter, ball_distance, x_start_point, y_start_point, scale):
-        # Loop needs integer values, in case the distance is small it is multiplied by 1000 and divided inside the loop
-        fake_ball_distance_used_in_a_loop = int(ball_distance * 1000)
-        one_part_of_fake_distance = int(fake_ball_distance_used_in_a_loop/25)
-        temporary_balls = []
-        for x in range(0, fake_ball_distance_used_in_a_loop + 1, one_part_of_fake_distance):
-            self.count += 1
-            x_real_value = x / 1000
-            x_pixels = x_real_value * scale
-            # TO DO: Formula explanation
-            y_value = x_real_value * math.tan(self.alfa_in_radians) - (self.g / (2 * (self.v0**2) * math.cos(self.alfa_in_radians)**2) * x_real_value**2)
-            y_pixels = y_value * scale
-            temporary_balls.append((x_pixels, y_pixels))
 
-        self.coordinates_of_balls = temporary_balls
-        print(self.count)
-
-
-    def draw_balls(self, q_painter, ball_distance, x_start_point, y_start_point):
+    def draw_balls(self, q_painter):
         for i in range(self.amount_of_visible_balls):
-            q_painter.drawEllipse(x_start_point + self.coordinates_of_balls[i][0] - self.DotSize/2, y_start_point - self.coordinates_of_balls[i][1], self.DotSize, self.DotSize)
+            q_painter.drawEllipse(self.x_start_point + self.coordinates_of_balls[i][0] - self.DotSize/2, self.y_start_point - self.coordinates_of_balls[i][1], self.DotSize, self.DotSize)
 
 
 class ProjectileCtrl:
