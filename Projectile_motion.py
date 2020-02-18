@@ -3,8 +3,8 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QMainWindow, QPushButton, QLineEdit, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QSlider
-from PyQt5.QtCore import Qt, pyqtSlot, QTimer
-from PyQt5.QtGui import QBrush, QPainter, QPen
+from PyQt5.QtCore import Qt, pyqtSlot, QTimer, QPointF
+from PyQt5.QtGui import QBrush, QPainter, QPen, QPainterPath
 import math
 
 class ProjectileUI(QMainWindow):
@@ -203,8 +203,17 @@ class ProjectileUI(QMainWindow):
 
 
     def draw_balls(self, q_painter):
+        start_point = QPointF(self.x_start_point, self.y_start_point + self.DotSize/2)
+        path = QPainterPath(start_point)
         for i in range(self.amount_of_visible_balls):
-            q_painter.drawEllipse(self.x_start_point + self.coordinates_of_balls[i][0] - self.DotSize/2, self.y_start_point - self.coordinates_of_balls[i][1], self.DotSize, self.DotSize)
+            x = self.x_start_point + self.coordinates_of_balls[i][0]
+            y = self.y_start_point - self.coordinates_of_balls[i][1] + self.DotSize/2
+            q_painter.drawEllipse(self.x_start_point + self.coordinates_of_balls[i][0] - self.DotSize/2,
+                                  self.y_start_point - self.coordinates_of_balls[i][1], self.DotSize, self.DotSize)
+            path.lineTo(x, y)
+            path.moveTo(x, y)
+        q_painter.setPen(QPen(Qt.black,  2, Qt.SolidLine))
+        q_painter.drawPath(path)
 
 
 class ProjectileCtrl:
