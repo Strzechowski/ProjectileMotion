@@ -23,6 +23,7 @@ class ProjectileUI(QMainWindow):
         self.DotSize = 10
 
         # Timer setup
+        self.wait_at_the_last_ball = 0
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.showTime)
 
@@ -37,9 +38,13 @@ class ProjectileUI(QMainWindow):
 
 
     def showTime(self):
-        self.amount_of_visible_balls += 1
         if self.amount_of_visible_balls == 27:
-            self.amount_of_visible_balls = 0
+            self.wait_at_the_last_ball += 1
+            if self.wait_at_the_last_ball == 4:
+                self.amount_of_visible_balls = 0
+                self.wait_at_the_last_ball = 0
+        else:
+            self.amount_of_visible_balls += 1
         # Updates the drawing
         self.update()
 
@@ -114,8 +119,10 @@ class ProjectileUI(QMainWindow):
         Z = self.v0**2 / self.g * math.sin(2 * self.alfa_in_radians)
         self.pixel_scale = self.get_scale(Z)
 
-        self.y_start_point = self.sizeY - (4*self.DotSize)
-        self.x_start_point = 2*self.DotSize
+        gap_beetwen_axis_and_frame = 4*self.DotSize
+
+        self.y_start_point = self.sizeY - gap_beetwen_axis_and_frame
+        self.x_start_point = gap_beetwen_axis_and_frame
 
         self.count_balls(Z)
         self.count_axis()
@@ -143,17 +150,15 @@ class ProjectileUI(QMainWindow):
     def count_balls(self, distance):
         # Loop needs integer values, in case the distance is small it is multiplied by 1000 and divided inside the loop
         fake_ball_distance_used_in_a_loop = int(distance * 1000)
-        one_part_of_fake_distance = int(fake_ball_distance_used_in_a_loop/25)
+        one_part_of_fake_distance = int(fake_ball_distance_used_in_a_loop/26)
         temporary_balls = []
-        temporary_real_values = []
         for x in range(0, fake_ball_distance_used_in_a_loop + 1, one_part_of_fake_distance):
-            x_real_value = x / 1000
-            x_pixels = x_real_value * self.pixel_scale
+            x_value = x / 1000
+            x_pixels = x_value * self.pixel_scale
             # TO DO: Formula explanation
-            y_value = x_real_value * math.tan(self.alfa_in_radians) - (self.g / (2 * (self.v0**2) * math.cos(self.alfa_in_radians)**2) * x_real_value**2)
+            y_value = x_value * math.tan(self.alfa_in_radians) - (self.g / (2 * (self.v0**2) * math.cos(self.alfa_in_radians)**2) * x_value**2)
             y_pixels = y_value * self.pixel_scale
-            temporary_balls.append((x_pixels, y_pixels))
-            temporary_real_values.append(x_real_value)
+            temporary_balls.append((x_pixels, x_value, y_pixels, y_value))
 
         self.coordinates_of_balls = temporary_balls
 
@@ -177,39 +182,59 @@ class ProjectileUI(QMainWindow):
         qp.begin(self)
         qp.setBrush(QBrush(Qt.red, Qt.SolidPattern))
 
-        #self.basic_motion_calculations()
         self.draw_X_axis(qp)
+        self.draw_Y_axis(qp)
         self.draw_balls(qp)
 
 
     def draw_X_axis(self, q_painter):
-        q_painter.drawLine(self.x_start_point, self.y_start_point + 5, self.x_start_point + 1000, self.y_start_point + 5)
-        pixels_below_the_axis = 25
+        q_painter.drawLine(self.x_start_point, self.y_start_point, self.x_start_point + 1000, self.y_start_point)
 
         for i in range(len(self.axis_coordinates_and_values)):
-            x_pixels = self.axis_coordinates_and_values[i][0]
+            x = self.x_start_point + self.axis_coordinates_and_values[i][0]
             x_real_value = self.axis_coordinates_and_values[i][1]
-            q_painter.drawLine(self.x_start_point + x_pixels, self.y_start_point, self.x_start_point + x_pixels, self.y_start_point + 10)
+            q_painter.drawLine(x, self.y_start_point - 5, x, self.y_start_point + 5)
 
-            # When distance is very small the X axis is only up to distance of 10, in that case floating point is apreciated
-            # Two and three digit numbers should be moved few pixels more to the left, so they are directly under the ticks
-            if x_real_value < 10 and self.pixel_scale == 100:
-                q_painter.drawText(self.x_start_point + x_pixels - 9, self.y_start_point + pixels_below_the_axis, str(x_real_value))
-            elif x_real_value < 100:
-                q_painter.drawText(self.x_start_point + x_pixels - 9, self.y_start_point + pixels_below_the_axis, '%.0f' % (x_real_value))
-            else:
-                q_painter.drawText(self.x_start_point + x_pixels - 13, self.y_start_point + pixels_below_the_axis, '%.0f' % (x_real_value))
+            move_label_by_x_pixels, label = self.return_label(x_real_value)
+            q_painter.drawText(x - move_label_by_x_pixels - 9, self.y_start_point + 25 , label)
 
+
+    def draw_Y_axis(self, q_painter):
+        q_painter.drawLine(self.x_start_point, self.y_start_point, self.x_start_point, self.y_start_point - 400)
+
+        for i in range(11):
+            y = self.y_start_point - self.axis_coordinates_and_values[i][0]
+            y_real_value = self.axis_coordinates_and_values[i][1]
+            q_painter.drawLine(self.x_start_point - 5, y, self.x_start_point + 5, y)
+
+            move_label_by_x_pixels, label = self.return_label(y_real_value)
+            q_painter.drawText(self.x_start_point - move_label_by_x_pixels - 34, y + 5 , label)
+
+
+    def return_label(self, point_value):
+        # When distance is very small the X axis is only up to distance of 10, in that case floating point is apreciated
+        # Two and three digit numbers should be moved few pixels more to the left, so they are directly under the ticks
+        if point_value < 10 and self.pixel_scale == 100:
+                move_label_by_x_pixels = 0
+                label = str(point_value)
+        elif point_value < 100:
+            move_label_by_x_pixels = 0
+            label = '%.0f' % (point_value)
+        else:
+            move_label_by_x_pixels = 4
+            label = '%.0f' % (point_value)
+        return move_label_by_x_pixels, label
 
 
     def draw_balls(self, q_painter):
-        start_point = QPointF(self.x_start_point, self.y_start_point + self.DotSize/2)
+        start_point = QPointF(self.x_start_point, self.y_start_point)
         path = QPainterPath(start_point)
         for i in range(self.amount_of_visible_balls):
             x = self.x_start_point + self.coordinates_of_balls[i][0]
-            y = self.y_start_point - self.coordinates_of_balls[i][1] + self.DotSize/2
-            q_painter.drawEllipse(self.x_start_point + self.coordinates_of_balls[i][0] - self.DotSize/2,
-                                  self.y_start_point - self.coordinates_of_balls[i][1], self.DotSize, self.DotSize)
+            y = self.y_start_point - self.coordinates_of_balls[i][2]
+            q_painter.drawEllipse(x - self.DotSize/2, y - self.DotSize/2, self.DotSize, self.DotSize)
+            if i == 13:
+                q_painter.drawText(x, y - 20, 'Highest point: %.02f' % ( self.coordinates_of_balls[i][3] ))
             path.lineTo(x, y)
             path.moveTo(x, y)
         q_painter.setPen(QPen(Qt.black,  2, Qt.SolidLine))
