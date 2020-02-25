@@ -27,10 +27,10 @@ class ProjectileUI(QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.showTime)
 
-        # List of tuples with X and Y coordinates eg. [(x1, y1), (x2, y2), ...]
+        # List of tuples with X and Y coordinates eg. [(x1_pixels, x1_real_value, y1_pixels, y1_real_value),  ...]
         self.coordinates_of_balls = []
         self.amount_of_visible_balls = 0
-        # List of tuples with X pixels and X distance values eg. [(x1_pixels, x1_real_value), ...]
+        # List of tuples with pixels and distance values eg. [(pixels, real_value), ...]
         self.axis_coordinates_and_values = []
 
         self.create_controls_for_motion_parameters()
@@ -75,7 +75,7 @@ class ProjectileUI(QMainWindow):
 
         self.angle_slider = QSlider(Qt.Horizontal)
         self.angle_slider.setTickInterval(5)
-        self.angle_slider.setMaximum(80)
+        self.angle_slider.setMaximum(70)
         self.angle_slider.setMinimum(5)
         self.angle_slider.setSingleStep(5)
         self.angle_slider.setTickPosition(QSlider.TicksBothSides)
@@ -119,7 +119,7 @@ class ProjectileUI(QMainWindow):
         Z = self.v0**2 / self.g * math.sin(2 * self.alfa_in_radians)
         self.pixel_scale = self.get_scale(Z)
 
-        gap_beetwen_axis_and_frame = 4*self.DotSize
+        gap_beetwen_axis_and_frame = 40
 
         self.y_start_point = self.sizeY - gap_beetwen_axis_and_frame
         self.x_start_point = gap_beetwen_axis_and_frame
@@ -200,9 +200,9 @@ class ProjectileUI(QMainWindow):
 
 
     def draw_Y_axis(self, q_painter):
-        q_painter.drawLine(self.x_start_point, self.y_start_point, self.x_start_point, self.y_start_point - 400)
+        q_painter.drawLine(self.x_start_point, self.y_start_point, self.x_start_point, self.y_start_point - 480)
 
-        for i in range(11):
+        for i in range(13):
             y = self.y_start_point - self.axis_coordinates_and_values[i][0]
             y_real_value = self.axis_coordinates_and_values[i][1]
             q_painter.drawLine(self.x_start_point - 5, y, self.x_start_point + 5, y)
@@ -213,17 +213,21 @@ class ProjectileUI(QMainWindow):
 
     def return_label(self, point_value):
         # When distance is very small the X axis is only up to distance of 10, in that case floating point is apreciated
-        # Two and three digit numbers should be moved few pixels more to the left, so they are directly under the ticks
+        # Three digit numbers should be moved few pixels more to the left, so they are directly under the ticks
+        move_label_by_x_pixels = 0
+
         if point_value < 10 and self.pixel_scale == 100:
-                move_label_by_x_pixels = 0
-                label = str(point_value)
-        elif point_value < 100:
-            move_label_by_x_pixels = 0
-            label = '%.0f' % (point_value)
+            label = str(point_value)
         else:
-            move_label_by_x_pixels = 4
             label = '%.0f' % (point_value)
+
+        if len(label) == 1:
+            move_label_by_x_pixels = -4
+        elif point_value >= 100:
+            move_label_by_x_pixels = 4
+
         return move_label_by_x_pixels, label
+
 
 
     def draw_balls(self, q_painter):
@@ -234,7 +238,7 @@ class ProjectileUI(QMainWindow):
             y = self.y_start_point - self.coordinates_of_balls[i][2]
             q_painter.drawEllipse(x - self.DotSize/2, y - self.DotSize/2, self.DotSize, self.DotSize)
             if i == 13:
-                q_painter.drawText(x, y - 20, 'Highest point: %.02f' % ( self.coordinates_of_balls[i][3] ))
+                q_painter.drawText(x, y - 20, 'Highest point y = %.02f' % ( self.coordinates_of_balls[i][3] ))
             path.lineTo(x, y)
             path.moveTo(x, y)
         q_painter.setPen(QPen(Qt.black,  2, Qt.SolidLine))
