@@ -15,7 +15,7 @@ class ProjectileUI(QMainWindow):
         self.setWindowTitle('Projectile!')
         self.resolution = resolution
         self.sizeX = 1100
-        self.sizeY = 600
+        self.sizeY = 550
         self.placeWindowInTheMiddle()
         self.g = 10
         self.v0 = 5
@@ -51,7 +51,6 @@ class ProjectileUI(QMainWindow):
 
     def create_controls_for_motion_parameters(self):
         controls = QWidget(self)
-        controls.setMaximumSize(self.sizeX/4, self.sizeY/4)
         self.setCentralWidget(controls)
 
         start_button = QPushButton('Start!', self)
@@ -83,6 +82,8 @@ class ProjectileUI(QMainWindow):
 
 
         main_vertical_layout = QVBoxLayout()
+        # Margins are easy way to put controls in the right corner
+        main_vertical_layout.setContentsMargins(self.sizeX * 3/4, 10, 10, self.sizeY * 3/4)
         horizontal_layout_1 = QHBoxLayout()
         horizontal_layout_1.addWidget(self.angle_label)
         horizontal_layout_1.addWidget(self.angle_slider)
@@ -99,6 +100,7 @@ class ProjectileUI(QMainWindow):
         main_vertical_layout.addLayout(horizontal_layout_2)
         main_vertical_layout.addLayout(horizontal_layout_3)
         controls.setLayout(main_vertical_layout)
+        self.show()
 
 
     def slider_value_update(self):
