@@ -117,16 +117,17 @@ class ProjectileUI(QMainWindow):
 
     def basic_motion_calculations(self):
         self.alfa_in_radians = math.radians(self.alfa)
-        # TO DO: Formula explanation
-        Z = self.v0**2 / self.g * math.sin(2 * self.alfa_in_radians)
-        self.pixel_scale = self.get_scale(Z)
+        # Calculation of the distance that ball travels
+        # For further explanation check projectile motion formulas on the Internet
+        distance = self.v0**2 / self.g * math.sin(2 * self.alfa_in_radians)
+        self.pixel_scale = self.get_scale(distance)
 
         gap_beetwen_axis_and_frame = 40
 
         self.y_start_point = self.sizeY - gap_beetwen_axis_and_frame
         self.x_start_point = gap_beetwen_axis_and_frame
 
-        self.count_balls(Z)
+        self.count_balls(distance)
         self.count_axis()
 
 
@@ -157,7 +158,8 @@ class ProjectileUI(QMainWindow):
         for x in range(0, fake_ball_distance_used_in_a_loop + 1, one_part_of_fake_distance):
             x_value = x / 1000
             x_pixels = x_value * self.pixel_scale
-            # TO DO: Formula explanation
+            # This calculation is needed to find y coordinate of the ball
+            # For further explanation check projectile motion formulas on the Internet
             y_value = x_value * math.tan(self.alfa_in_radians) - (self.g / (2 * (self.v0**2) * math.cos(self.alfa_in_radians)**2) * x_value**2)
             y_pixels = y_value * self.pixel_scale
             temporary_balls.append((x_pixels, x_value, y_pixels, y_value))
